@@ -1,4 +1,3 @@
-\
 import logging
 import uuid
 from datetime import datetime
@@ -216,6 +215,13 @@ async def catch_all(path):
                         logger.info(f"HTTP error occurred: {http_err}")
                         if http_err.response.status_code == 429:  # 429 is the status code for Too Many Requests
                             logger.info(f"Received 429 response from endpoint, retrying next available endpoint")
+                            if response.headers.get("x-ratelimit-remaining-tokens") == "0":
+                                logger.info(f"Received 0 remaining tokens from endpoint, retrying next available endpoint that has active resuests remaining")
+                                request_criteria = 'requests'
+                            if response.headers.get("x-ratelimit-remaining-requests") == "0":
+                                logger.info(f"Received 0 remaining requests from endpoint, retrying next available endpoint that has active tokens remaining")
+                                request_criteria = 'tokens'
+                            
                             current_retry += 1
                             endpoint_info["connection_errors_count"]+=1
                             request_processed = False
