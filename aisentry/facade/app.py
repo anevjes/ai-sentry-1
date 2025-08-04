@@ -92,6 +92,7 @@ async def catch_all(path):
         request_processed = False
         max_retries = 3
         current_retry = 0
+        request_criteria = 'requests'  # Default criteria for endpoint selection
         
         # pull out the ai-sentry specific headers - we use them further for worker processing options.
         ai_sentry_headers = AISentryHeaders()
@@ -226,6 +227,12 @@ async def catch_all(path):
 
                             if "429 Too Many Requests" in str(e):
                                 logger.info(f"Received 429 response from endpoint, retrying next available endpoint")
+                                if response.headers.get("x-ratelimit-remaining-tokens") == "0":
+                                    logger.info(f"Received 0 remaining tokens from endpoint, retrying next available endpoint that has active resuests remaining")
+                                    request_criteria = 'requests'
+                                if response.headers.get("x-ratelimit-remaining-requests") == "0":
+                                    logger.info(f"Received 0 remaining requests from endpoint, retrying next available endpoint that has active tokens remaining")
+                                    request_criteria = 'tokens'
                                 current_retry += 1
                                 endpoint_info["connection_errors_count"]+=1
                                 request_processed = False
@@ -362,6 +369,12 @@ async def catch_all(path):
                     if response.status_code == 429:
 
                         logger.info(f"Received 429 response from endpoint, retrying next available endpoint")
+                        if response.headers.get("x-ratelimit-remaining-tokens") == "0":
+                            logger.info(f"Received 0 remaining tokens from endpoint, retrying next available endpoint that has active resuests remaining")
+                            request_criteria = 'requests'
+                        if response.headers.get("x-ratelimit-remaining-requests") == "0":
+                            logger.info(f"Received 0 remaining requests from endpoint, retrying next available endpoint that has active tokens remaining")
+                            request_criteria = 'tokens'
                         #endpoint_info["x-retry-after-ms"]=response.headers["x-retry-after-ms"]
                         current_retry += 1
                         endpoint_info["connection_errors_count"]+=1
